@@ -1,6 +1,7 @@
 mod cli;
 mod clone_cmd;
 mod compress_cmd;
+mod head_cmd;
 mod diff_cmd;
 mod info_cmd;
 mod string_utils;
@@ -20,6 +21,7 @@ fn main() -> Result<()> {
     tokio::runtime::Runtime::new()?.block_on(async {
         match command_opts {
             CommandOpts::Compress(opts) => compress_cmd::compress_cmd(opts).await,
+            CommandOpts::Head(opts) => head_cmd::head_cmd(opts).await,
             CommandOpts::Clone(opts) => clone_cmd::clone_cmd(opts).await,
             CommandOpts::Info(opts) => info_cmd::info_cmd(opts).await,
             CommandOpts::Diff(opts) => diff_cmd::diff_cmd(opts).await,

@@ -9,6 +9,7 @@ use url::Url;
 
 use crate::clone_cmd;
 use crate::compress_cmd;
+use crate::head_cmd;
 use crate::diff_cmd;
 use crate::info_cmd;
 use crate::string_utils::*;
@@ -31,6 +32,7 @@ impl LogOpts {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommandOpts {
+    Head(head_cmd::Options),
     Compress(compress_cmd::Options),
     Clone(clone_cmd::Options),
     Info(info_cmd::Options),
@@ -74,6 +76,22 @@ where
                     .value_names(["KEY", "VALUE"])
                     .help("Custom metadata key-value pair where the value is a provided string"),
             ),
+    );
+    let head_subcmd = add_chunker_args(
+        Command::new("head")
+            .about("Head a file")
+            .arg(
+                Arg::new("INPUT")
+                    .short('i')
+                    .long("input")
+                    .value_name("FILE")
+                    .value_parser(value_parser!(PathBuf))
+                    .help("Input file, needed")
+                    .required(true)
+            )
+            .arg(output_file_arg())
+            .arg(force_create_arg())
+            .arg(buffered_chunks_arg())
     );
 
     let clone_subcmd = add_archive_input_http_args(
@@ -155,6 +173,7 @@ where
                 .help("Set verbosity level"),
         )
         .subcommand(compress_subcmd)
+        .subcommand(head_subcmd)
         .subcommand(clone_subcmd)
         .subcommand(info_subcmd)
         .subcommand(diff_subcmd);
@@ -218,6 +237,24 @@ where
             }),
             log_opts,
         ))
+    } else if let Some(matches) = matches.subcommand_matches("head") {
+        let output = matches.get_one::<PathBuf>("OUTPUT").unwrap();
+        let input = matches.get_one::<PathBuf>("INPUT").unwrap();
+        let hash_length = *matches.get_one::<u32>("hash-length").unwrap();
+        let chunker_config = parse_chunker_config(&mut cmd,matches)?;
+        let compression = parse_compression(&mut cmd, matches)?;
+        Ok((
+            CommandOpts::Head(head_cmd::Options {
+                input: input.to_path_buf(),
+                output: output.to_path_buf(),
+                hash_length: hash_length as usize,
+                force_create: matches.get_flag("force-create"),
+                chunker_config,
+                compression,
+                number_chunk_buffers: num_chunk_buffers(matches),
+            }),
+            log_opts,
+            ))
     } else if let Some(matches) = matches.subcommand_matches("clone") {
         let output = matches.get_one::<PathBuf>("OUTPUT").unwrap();
         let mut seed_stdin = false;

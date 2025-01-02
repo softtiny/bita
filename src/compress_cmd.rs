@@ -172,7 +172,7 @@ pub async fn compress_cmd(opts: Options) -> Result<()> {
         ))?;
 
     let (source_hash, archive_chunks, source_size, chunk_order) =
-        if let Some(input_path) = opts.input {
+       if let Some(input_path) = opts.input {
             chunk_input(
                 File::open(&input_path).await.context(format!(
                     "Failed to open input file {}",
