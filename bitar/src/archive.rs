@@ -73,10 +73,10 @@ impl ChunkDescriptor {
 pub struct Archive<R> {
     reader: R,
     // Array with descriptor of all chunks in archive.
-    archive_chunks: Vec<ChunkDescriptor>,
+    pub archive_chunks: Vec<ChunkDescriptor>,
     // Array of indexes pointing into the archive_chunks.
     // Represents the order of chunks in source.
-    source_order: Vec<usize>,
+    pub source_order: Vec<usize>,
     total_chunks: usize,
     header_size: usize,
     header_checksum: HashSum,
