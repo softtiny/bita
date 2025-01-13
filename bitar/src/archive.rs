@@ -116,6 +116,7 @@ impl<R> Archive<R> {
             .map_err(ArchiveError::ReaderError)?
             .to_vec();
         Self::verify_pre_header(&header)?;
+        println!("header::PRE_HEADER_SIZE '{}', header {:#?} used", header::PRE_HEADER_SIZE, header.clone());
 
         let dictionary_size = u64::from_le_bytes(
             header[header::ARCHIVE_MAGIC.len()..header::PRE_HEADER_SIZE]
