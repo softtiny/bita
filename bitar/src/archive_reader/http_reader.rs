@@ -3,7 +3,7 @@ use bytes::{Bytes, BytesMut};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use futures_util::{ready, stream::Stream, StreamExt};
-use reqwest::{RequestBuilder, Url};
+use reqwest::{RequestBuilder, Url,header::HeaderMap};
 use std::{fmt, time::Duration};
 use std::net::SocketAddr;
 use super::http_range_request::HttpRangeRequest;
@@ -16,18 +16,23 @@ pub struct HttpReader {
     retry_delay: Duration,
     split_head: bool,
     source_url: Option<Url>,
+    headers: HeaderMap,
 }
 
 impl HttpReader {
-    /// Create a remote archive reader using RequestBuilder for the http request.
-    pub fn from_request(request_builder: RequestBuilder) -> Self {
+    pub fn from_request_ext(request_builder: RequestBuilder,headers: HeaderMap) -> Self {
         Self {
             request_builder,
             retry_count: 0,
             retry_delay: Duration::from_secs(0),
             split_head: false,
             source_url: None,
+            headers,
         }
+    }
+    /// Create a remote archive reader using RequestBuilder for the http request.
+    pub fn from_request(request_builder: RequestBuilder) -> Self {
+        HttpReader::from_request_ext(request_builder,HeaderMap::new())
     }
 
     /// Create a remote archive reader using an URL and default parameters for the request.
@@ -76,6 +81,7 @@ impl HttpReader {
             request: None,
             split_head: self.split_head,
             souce_url: self.source_url.clone(),
+            headers: self.headers.clone(),
         }
 
     }
@@ -92,6 +98,7 @@ struct ChunkReader<'a> {
     request: Option<HttpRangeRequest>,
     split_head: bool,
     souce_url: Option<Url>,
+    headers: HeaderMap,
 }
 
 impl ChunkReader<'_>
@@ -120,7 +127,7 @@ where
                 // Create a new range request.
                 let request_builder = if self.split_head {
                     let url = self.souce_url.clone().unwrap();
-                    reqwest::Client::new().get(url)
+                    reqwest::Client::new().get(url).headers(self.headers.clone())
                 } else {
                     self
                         .request_builder
