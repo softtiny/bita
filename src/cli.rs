@@ -105,6 +105,12 @@ where
                     .value_parser(parse_hash_sum)
                     .help("Verify that the archive header checksum is the one given"),
             )
+            .arg(
+                Arg::new("source-url")
+                    .long("source-url")
+                    .value_parser(value_parser!(OsString))
+                    .help("the URL to a remote source file")
+            )
             .arg(output_file_arg())
             .arg(
                 Arg::new("seed")
@@ -274,6 +280,11 @@ where
         let seed_output = matches.get_flag("seed-output");
         let header_checksum = matches.get_one::<HashSum>("verify-header").cloned();
         let input_archive = parse_input_archive_config(&mut cmd, matches)?;
+        let source_url = parse_source_url(&mut cmd, matches)?;
+        let mut split_head = false;
+        if !source_url.is_none() {
+            split_head = true;
+        }
         Ok((
             CommandOpts::Clone(clone_cmd::Options {
                 input_archive,
@@ -285,6 +296,8 @@ where
                 verify_output: matches.get_flag("verify-output"),
                 seed_output,
                 num_chunk_buffers: num_chunk_buffers(matches),
+                split_head,
+                source_url,
             }),
             log_opts,
         ))
@@ -383,6 +396,22 @@ fn parse_compression(
     )
 }
 
+
+fn parse_source_url(cmd: &mut Command, matches: &clap::ArgMatches) -> Result<Option<Url>, clap::Error> {
+    let input_wrap = matches.get_one::<OsString>("source-url");
+    if input_wrap.is_none() {
+        Ok(None)
+    } else {
+        let input = input_wrap.unwrap();
+        Ok(
+            match input.to_str().map(|s| s.parse::<Url>()) {
+                Some(Ok(url)) => Some(url),
+                _=> None,
+            }
+        )
+    }
+
+}
 fn parse_input_archive_config(
     cmd: &mut Command,
     matches: &clap::ArgMatches,
@@ -837,6 +866,8 @@ mod tests {
                 seed_output: false,
                 verify_output: true,
                 num_chunk_buffers: get_num_chunk_buffers(),
+                split_head: false,
+                source_url: None,
             })
         );
     }
@@ -872,6 +903,8 @@ mod tests {
                 seed_output: false,
                 verify_output: false,
                 num_chunk_buffers: get_num_chunk_buffers(),
+                split_head: false,
+                source_url: None,
             })
         );
     }
@@ -905,6 +938,8 @@ mod tests {
                 seed_output: false,
                 verify_output: false,
                 num_chunk_buffers: get_num_chunk_buffers(),
+                split_head: false,
+                source_url: None,
             })
         );
     }
@@ -941,6 +976,8 @@ mod tests {
                 seed_output: false,
                 verify_output: false,
                 num_chunk_buffers: get_num_chunk_buffers(),
+                split_head: false,
+                source_url: None,
             })
         );
     }
@@ -986,6 +1023,8 @@ mod tests {
                 seed_output: false,
                 verify_output: false,
                 num_chunk_buffers: get_num_chunk_buffers(),
+                split_head: false,
+                source_url: None,
             })
         );
     }

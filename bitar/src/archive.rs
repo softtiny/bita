@@ -104,8 +104,7 @@ impl<R> Archive<R> {
         }
         Ok(())
     }
-    /// Try to initialize an archive from a reader.
-    pub async fn try_init(mut reader: R) -> Result<Self, ArchiveError<R::Error>>
+    pub async fn try_init_ext(mut reader: R,split_head: bool) -> Result<Self, ArchiveError<R::Error>>
     where
         R: ArchiveReader,
     {
@@ -151,7 +150,9 @@ impl<R> Archive<R> {
         };
 
         // Get chunk data offset
-        let chunk_data_offset = {
+        let chunk_data_offset = if split_head {
+            0
+        } else {
             let offs = header::PRE_HEADER_SIZE + dictionary_size;
             u64::from_le_bytes(header[offs..(offs + 8)].try_into().unwrap())
         };
@@ -194,6 +195,13 @@ impl<R> Archive<R> {
             chunker_config: chunker_config_from_params(chunker_params)?,
             metadata: dictionary.metadata,
         })
+    }
+    /// Try to initialize an archive from a reader.
+    pub async fn try_init(mut reader: R) -> Result<Self, ArchiveError<R::Error>>
+    where
+        R: ArchiveReader,
+    {
+        Archive::try_init_ext(reader,false).await
     }
     /// Total number of chunks in archive (including duplicates).
     pub fn total_chunks(&self) -> usize {

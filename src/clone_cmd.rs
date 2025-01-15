@@ -161,12 +161,14 @@ where
     Ok(index)
 }
 
-async fn clone_archive<R>(opts: Options, reader: R) -> Result<()>
+
+
+async fn clone_archive_ext<R>(opts: Options, reader: R,split_head: bool) -> Result<()>
 where
     R: ArchiveReader,
     R::Error: std::error::Error + Send + Sync + 'static,
 {
-    let mut archive = Archive::try_init(reader).await.context(format!(
+    let mut archive = Archive::try_init_ext(reader,split_head).await.context(format!(
         "Failed to read archive at {}",
         opts.input_archive.source()
     ))?;
@@ -225,7 +227,7 @@ where
                 opts.num_chunk_buffers,
                 &mut output_file,
             )
-            .await?,
+                .await?,
         )
     } else {
         None
@@ -258,8 +260,8 @@ where
             &mut tokio::io::stdin(),
             &mut output,
         )
-        .await
-        .context("Failed to clone from stdin")?;
+            .await
+            .context("Failed to clone from stdin")?;
         info!("Used {} bytes from stdin", human_size!(bytes_to_output));
         total_read_from_seed += bytes_to_output;
     }
@@ -278,8 +280,8 @@ where
             file,
             &mut output,
         )
-        .await
-        .context(format!("Failed to clone from {}", seed_path.display()))?;
+            .await
+            .context(format!("Failed to clone from {}", seed_path.display()))?;
         info!(
             "Used {} bytes from {}",
             human_size!(bytes_to_output),
@@ -341,6 +343,14 @@ where
     Ok(())
 }
 
+async fn clone_archive<R>(opts: Options, reader: R) -> Result<()>
+where
+    R: ArchiveReader,
+    R::Error: std::error::Error + Send + Sync + 'static,
+{
+    clone_archive_ext(opts, reader, false).await
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemoteInput {
     pub url: Url,
@@ -375,6 +385,8 @@ pub struct Options {
     pub seed_output: bool,
     pub verify_output: bool,
     pub num_chunk_buffers: usize,
+    pub split_head: bool,
+    pub source_url: Option<Url>,
 }
 
 pub async fn clone_cmd(opts: Options) -> Result<()> {
@@ -397,11 +409,17 @@ pub async fn clone_cmd(opts: Options) -> Result<()> {
             if let Some(timeout) = input.receive_timeout {
                 request = request.timeout(timeout);
             }
-            clone_archive(
+            let mut reader = HttpReader::from_request(request)
+                .retries(input.retries)
+                .retry_delay(input.retry_delay);
+            if opts.split_head {
+                reader.set_source(opts.source_url.clone());
+            }
+            let split_head = opts.split_head;
+            clone_archive_ext(
                 opts,
-                HttpReader::from_request(request)
-                    .retries(input.retries)
-                    .retry_delay(input.retry_delay),
+                reader,
+                split_head,
             )
             .await
         }
