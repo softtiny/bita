@@ -5,7 +5,7 @@ use core::task::{Context, Poll};
 use futures_util::{ready, stream::Stream, StreamExt};
 use reqwest::{RequestBuilder, Url};
 use std::{fmt, time::Duration};
-
+use std::net::SocketAddr;
 use super::http_range_request::HttpRangeRequest;
 use crate::archive_reader::{ArchiveReader, ChunkOffset};
 
@@ -14,6 +14,8 @@ pub struct HttpReader {
     request_builder: RequestBuilder,
     retry_count: u32,
     retry_delay: Duration,
+    split_head: bool,
+    source_url: Option<Url>,
 }
 
 impl HttpReader {
@@ -23,12 +25,19 @@ impl HttpReader {
             request_builder,
             retry_count: 0,
             retry_delay: Duration::from_secs(0),
+            split_head: false,
+            source_url: None,
         }
     }
 
     /// Create a remote archive reader using an URL and default parameters for the request.
     pub fn from_url(url: Url) -> Self {
         Self::from_request(reqwest::Client::new().get(url))
+    }
+
+    pub fn set_source(&mut self, source_url: Option<Url>){
+        self.source_url = source_url;
+        self.split_head = true;
     }
 
     /// Set number of times to retry on failure
@@ -54,6 +63,8 @@ impl HttpReader {
         &mut self,
         chunks: Vec<ChunkOffset>,
     ) -> impl Stream<Item = Result<Bytes, HttpReaderError>> + '_ {
+
+
         ChunkReader {
             request_builder: &self.request_builder,
             chunk_buf: BytesMut::new(),
@@ -63,7 +74,10 @@ impl HttpReader {
             retry_count: self.retry_count,
             retry_delay: self.retry_delay,
             request: None,
+            split_head: self.split_head,
+            souce_url: self.source_url.clone(),
         }
+
     }
 }
 
@@ -76,6 +90,8 @@ struct ChunkReader<'a> {
     retry_count: u32,
     retry_delay: Duration,
     request: Option<HttpRangeRequest>,
+    split_head: bool,
+    souce_url: Option<Url>,
 }
 
 impl<'a> ChunkReader<'a>
@@ -102,11 +118,15 @@ where
             }
             if self.request.is_none() {
                 // Create a new range request.
-                let request_builder = self
-                    .request_builder
-                    .try_clone()
-                    .ok_or(HttpReaderError::RequestNotClonable)?;
-
+                let request_builder = if self.split_head {
+                    let url = self.souce_url.clone().unwrap();
+                    reqwest::Client::new().get(url)
+                } else {
+                    self
+                        .request_builder
+                        .try_clone()
+                        .ok_or(HttpReaderError::RequestNotClonable)?
+                };
                 self.num_adjacent_reads = Self::adjacent_reads(chunks);
                 let last_adjacent = &chunks[self.num_adjacent_reads - 1];
                 let total_size = last_adjacent.end() - next.offset;
