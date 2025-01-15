@@ -409,7 +409,7 @@ pub async fn clone_cmd(opts: Options) -> Result<()> {
             if let Some(timeout) = input.receive_timeout {
                 request = request.timeout(timeout);
             }
-            let mut reader = HttpReader::from_request(request)
+            let mut reader = HttpReader::from_request_ext(request,input.headers.clone())
                 .retries(input.retries)
                 .retry_delay(input.retry_delay);
             if opts.split_head {
