@@ -22,12 +22,12 @@ jobs:
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
-          command: ${{ matrix.platform.command }}
+          command: build
           target: ${{ matrix.platform.target }}
           args: "--locked --release"
           strip: true
       - name: Upload Artifacts sign
         uses: actions/upload-artifact@master
         with:
-           name: bita-${{ matrix.platform.target }}
+           name: bita-rustls-${{ matrix.platform.target }}
            target: target/${{ matrix.platform.target }}/release/bita
