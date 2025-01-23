@@ -30,4 +30,4 @@ jobs:
         uses: actions/upload-artifact@master
         with:
            name: bita-rustls-${{ matrix.platform.target }}
-           target: target/${{ matrix.platform.target }}/release/bita
+           path: target/${{ matrix.platform.target }}/release/bita
