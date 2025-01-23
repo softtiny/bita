@@ -46,7 +46,7 @@ default-features = false
 features = ["stream"]
 
 [features]
-default = ["default-tls"]
+default = ["rustls-tls"]
 lzma-compression = ["bitar/lzma-compression"]
 zstd-compression = ["bitar/zstd-compression"]
 default-tls = ["reqwest/default-tls", "bitar/default-tls"]
