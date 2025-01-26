@@ -6,6 +6,7 @@ use reqwest::header::HeaderMap;
 use std::io::{IsTerminal, SeekFrom};
 use std::path::PathBuf;
 use std::time::Duration;
+use reqwest::RequestBuilder;
 use tokio::fs::File;
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite},
@@ -15,7 +16,7 @@ use url::Url;
 
 use crate::{human_size, info_cmd};
 use bitar::{
-    archive_reader::{ArchiveReader, HttpReader, IoReader},
+    archive_reader::{ArchiveReader, HttpReader, IoReader,get_build},
     chunker, Archive, ChunkIndex, CloneOutput, HashSum, VerifiedChunk,
 };
 
@@ -389,6 +390,7 @@ pub struct Options {
     pub source_url: Option<Url>,
 }
 
+
 pub async fn clone_cmd(opts: Options) -> Result<()> {
     match opts.input_archive.clone() {
         InputArchive::Local(path) => {
@@ -403,9 +405,10 @@ pub async fn clone_cmd(opts: Options) -> Result<()> {
             .await
         }
         InputArchive::Remote(input) => {
-            let mut request = reqwest::Client::new()
-                .get(input.url.clone())
-                .headers(input.headers.clone());
+            // let mut request = reqwest::Client::new()
+            //     .get(input.url.clone())
+            //     .headers(input.headers.clone());
+            let mut request = get_build(input.url.clone(),input.headers.clone());
             if let Some(timeout) = input.receive_timeout {
                 request = request.timeout(timeout);
             }
