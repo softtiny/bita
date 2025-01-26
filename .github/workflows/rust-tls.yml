@@ -1,4 +1,4 @@
-name: Rustls
+name: Rustls ajmwagar erino
 on:
   workflow_dispatch:
 
@@ -19,6 +19,8 @@ jobs:
     runs-on: ${{ matrix.platform.runs-on }}
     steps:
       - uses: actions/checkout@v2
+        with:
+          repository: ajmwagar/merino
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
@@ -30,4 +32,4 @@ jobs:
         uses: actions/upload-artifact@master
         with:
            name: bita-rustls-${{ matrix.platform.target }}
-           path: target/${{ matrix.platform.target }}/release/bita
+           path: target/${{ matrix.platform.target }}/release/merino
