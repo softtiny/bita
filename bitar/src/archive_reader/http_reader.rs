@@ -5,9 +5,12 @@ use core::task::{Context, Poll};
 use futures_util::{ready, stream::Stream, StreamExt};
 use reqwest::{RequestBuilder, Url,header::HeaderMap};
 use std::{fmt, time::Duration};
-use std::net::SocketAddr;
+use std::env;
 use super::http_range_request::HttpRangeRequest;
 use crate::archive_reader::{ArchiveReader, ChunkOffset};
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
 /// Read a http/https hosted archive.
 pub struct HttpReader {
@@ -18,6 +21,23 @@ pub struct HttpReader {
     source_url: Option<Url>,
     headers: HeaderMap,
 }
+
+pub fn get_build(url: Url,headers:HeaderMap) -> RequestBuilder {
+    if let Ok(value) = env::var("ROOT_CA_SELF") {
+        let mut client_builder = reqwest::Client::builder();
+        let mut buf = Vec::new();
+        File::open(value).expect("Faile to open Root ca")
+            .read_to_end(&mut buf).expect("Faile to read root ca");
+        let cert = reqwest::Certificate::from_pem(&buf).expect("invalied root ca");
+        client_builder.add_root_certificate(cert).build().expect("Failed building HTTP Clinet22").get(url).headers(headers)
+    } else{
+       reqwest::Client::new()
+            .get(url)
+            .headers(headers)
+    }
+
+}
+
 
 impl HttpReader {
     pub fn from_request_ext(request_builder: RequestBuilder,headers: HeaderMap) -> Self {
@@ -37,7 +57,7 @@ impl HttpReader {
 
     /// Create a remote archive reader using an URL and default parameters for the request.
     pub fn from_url(url: Url) -> Self {
-        Self::from_request(reqwest::Client::new().get(url))
+        Self::from_request(get_build(url,HeaderMap::new()))
     }
 
     pub fn set_source(&mut self, source_url: Option<Url>){
@@ -127,7 +147,7 @@ where
                 // Create a new range request.
                 let request_builder = if self.split_head {
                     let url = self.souce_url.clone().unwrap();
-                    reqwest::Client::new().get(url).headers(self.headers.clone())
+                    get_build(url,self.headers.clone())
                 } else {
                     self
                         .request_builder

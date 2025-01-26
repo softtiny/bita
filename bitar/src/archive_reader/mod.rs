@@ -8,7 +8,7 @@ use core::pin::Pin;
 use futures_util::stream::Stream;
 
 // Re-export archive reader implementations.
-pub use http_reader::{HttpReader, HttpReaderError};
+pub use http_reader::{HttpReader, HttpReaderError,get_build};
 pub use io_reader::IoReader;
 
 use crate::ChunkOffset;
