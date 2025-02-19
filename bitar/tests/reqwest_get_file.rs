@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{copy, BufReader, Cursor, Read, Seek, SeekFrom, Write};
-use bson::{ Document,};
+use bson::{ Document,Bson};
 use bson::spec::BinarySubtype;
 
 pub fn get_shared_data() -> &'static [u8] {
@@ -13,6 +13,7 @@ async fn reqwest_test_get_one() -> Result<(), Box<dyn std::error::Error>> {
 
     let url = "https://kunkka.proxy/3m.zip";
     let file_name = "../.tmp/3m.zip";
+    let file_name_4k =file_name.to_string()+".4k";
 
     let buf = get_shared_data();
 
@@ -32,7 +33,7 @@ async fn reqwest_test_get_one() -> Result<(), Box<dyn std::error::Error>> {
     );*/
     let response = client_builder.get(url).header(reqwest::header::RANGE, "bytes=0-40860").send().await?;
     let bytes = response.bytes().await?;
-    let mut file = File::create(file_name.to_string()+".4k").expect("fail to create output.4k");
+    let mut file = File::create(&file_name_4k).expect("fail to create output.4k");
     let mut content = Cursor::new(bytes);
     copy(&mut content, &mut file)?;
 
@@ -48,6 +49,16 @@ async fn reqwest_test_get_one() -> Result<(), Box<dyn std::error::Error>> {
     doc.insert("aaab","234xdsafvqwerxzdfvc");
     doc.insert("aaac",vec!(34,234,23));
 
+    // let response = client_builder.get(url).header(reqwest::header::RANGE, "bytes=0-40860").send().await?;
+    // let bytes = response.bytes().await?;
+    // let bytes_slice: &[u8] = &bytes;
+    // doc.insert("aaad", bytes_slice);
+
+    // let response = client_builder.get(url).header(reqwest::header::RANGE, "bytes=40861-").send().await?;
+    // let bytes = response.bytes().await?;
+
+
+
     let mut buf = Vec::new();
     doc.to_writer(&mut buf)?;
     doc.to_writer(&mut buf)?;
@@ -60,6 +71,60 @@ async fn reqwest_test_get_one() -> Result<(), Box<dyn std::error::Error>> {
             println!("oooooo");
             for (i,doc) in documents.iter().enumerate() {
                 println!("Documetn: {}:{:?}",i+1,doc);
+            }
+        },
+        Err(e) =>{
+            eprintln!("Error reading BSON documents: {}",e);
+        }
+    }
+
+    let mut bytes = Vec::new();
+    let mut aa =File::open(&file_name_4k).expect("fail to open output");
+    aa.read_to_end(&mut bytes).expect("fail to read");
+
+    let file_name_4k_bson = file_name_4k +".bson";
+    let mut doc = Document::new();
+    let bin = bson::Binary {
+        subtype:BinarySubtype::Generic,
+        bytes,
+    };
+
+    doc.insert("aa",bin);
+    let mut buf = Vec::new();
+    doc.to_writer(&mut buf)?;
+    doc.to_writer(&mut buf)?;
+    let mut file = File::create(&file_name_4k_bson).expect("fail to open 4kbson");
+    file.write_all(&buf)?;
+
+    match read_bson_documents(&file_name_4k_bson) {
+        Ok(documents)=>{
+            for (i,doc) in documents.iter().enumerate() {
+                for key in doc.keys() {
+                    println!("Document: {}:{:?}",i+1,key);
+                    match doc.get(key) {
+                        Some(Bson::Binary(bin))=> {
+                            println!("Binary type is....");
+                            println!("{:?}",bin.bytes.len());
+                            println!("{:?}",bin.subtype);
+                            match bin.subtype {
+                                BinarySubtype::Generic => {
+                                    println!("type is defin Generic");
+                                },
+                                _ => {
+                                    println!("other olll,");
+                                }
+                            }
+                        },
+                        Some(_) =>{
+                            println!("not in up list");
+                        },
+                        None => {
+                          println!("filed not in sbon");
+                        },
+                    }
+
+                }
+
             }
         },
         Err(e) =>{
