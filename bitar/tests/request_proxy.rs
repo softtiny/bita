@@ -6,6 +6,13 @@ pub fn get_shared_data() -> &'static [u8] {
 }
 
 #[tokio::test]
+async fn reqwest_proxy_gogo() {
+    request_proxy_on().await.expect("not run on");
+    println!("after fn run; ....");
+    tokio::time::sleep(tokio::time::Duration::from_secs(32423423)).await;
+}
+
+
 async fn request_proxy_on() -> Result<(),Box<dyn std::error::Error>>{
     let url = "https://kunkka.proxy/3m.zip";
 
