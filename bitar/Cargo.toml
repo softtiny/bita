@@ -39,8 +39,8 @@ num_cpus = { version = "1.13", optional = true }
 bson = "2.13.0"
 
 [dev-dependencies]
-hyper = { version = "1.1.0", features = ["server", "http1"] }
-hyper-util = { version = "0.1.2", features = ["tokio", "server"] }
+hyper = { version = "1.6.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
 http-body-util = "0.1.0"
 rand = { version = "0.8", features = ["std"] }
 tempfile = "3.2"
