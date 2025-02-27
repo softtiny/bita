@@ -50,7 +50,7 @@ tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
 [dependencies.reqwest]
 version = "0.12.1"
 default-features = false
-features = ["stream", "socks"]
+features = ["stream", "socks", "http2"]
 
 [features]
 rustls-tls = ["reqwest/rustls-tls"]
