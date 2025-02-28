@@ -67,7 +67,7 @@ async fn reqwest_request() -> Result<(), Box<dyn std::error::Error>> {
 // request ok
 // server ok
 // join! ok
-#[tokio::test]
+
 async fn request_with_join() -> Result<(), Box<dyn std::error::Error>> {
 
     join!(hyper_server_start(),reqwest_request());
@@ -81,11 +81,18 @@ async fn handle_request_wait_5(_req: Request<hyper::body::Incoming>) -> Result<R
     Ok(Response::new(Bytes::from("hello world")))
 }
 
+#[tokio::test]
 async fn request_timeout_work() -> Result<(), Box<dyn std::error::Error>> {
     // Server setup
     let addr = SocketAddr::from(([127,0,0,1],3000));
     let listener = TcpListener::bind(addr).await.expect("bind prot erro");
-
+    tokio::task::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        println!("sleep 5s");
+    });
+    println!("new on mian");
+    tokio::time::sleep(std::time::Duration::from_secs(8)).await;
+    println!("after 8s");
     Ok(())
 }
 
