@@ -3,7 +3,7 @@ use std::net::{SocketAddr};
 use http_body_util::Full;
 use hyper::server::conn::http2;
 use hyper::service::service_fn;
-use hyper::body::Bytes;
+use hyper::body::{Body, Bytes};
 use hyper::{Request, Response};
 use hyper::rt::Executor;
 use hyper_util::rt::TokioIo;
@@ -73,3 +73,11 @@ async fn request_with_join() -> Result<(), Box<dyn std::error::Error>> {
     join!(hyper_server_start(),reqwest_request());
     Ok(())
 }
+
+
+// Example a  start ---- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+async fn handle_request_wait_5(_req: Request<hyper::body::Incoming>) -> Result<Response<hyper::body::Bytes>, Infallible> {
+
+    Ok(Response::new(Bytes::from("hello world")))
+}
+// Example a  end ---- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
