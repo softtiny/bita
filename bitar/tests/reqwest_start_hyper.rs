@@ -64,8 +64,12 @@ async fn reqwest_request() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// request ok
+// server ok
+// join! ok
 #[tokio::test]
 async fn request_with_join() -> Result<(), Box<dyn std::error::Error>> {
+
     join!(hyper_server_start(),reqwest_request());
     Ok(())
 }
