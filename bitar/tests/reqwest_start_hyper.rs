@@ -77,7 +77,16 @@ async fn request_with_join() -> Result<(), Box<dyn std::error::Error>> {
 
 // Example a  start ---- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 async fn handle_request_wait_5(_req: Request<hyper::body::Incoming>) -> Result<Response<hyper::body::Bytes>, Infallible> {
-
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     Ok(Response::new(Bytes::from("hello world")))
 }
+
+async fn request_timeout_work() -> Result<(), Box<dyn std::error::Error>> {
+    // Server setup
+    let addr = SocketAddr::from(([127,0,0,1],3000));
+    let listener = TcpListener::bind(addr).await.expect("bind prot erro");
+
+    Ok(())
+}
+
 // Example a  end ---- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
