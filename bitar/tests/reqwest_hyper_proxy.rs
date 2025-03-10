@@ -90,15 +90,16 @@ async fn request_server_proxy() -> Result<(),Box<dyn std::error::Error>> {
     println!("run proxy task start");
     let mut proxy_task = tokio::task::spawn(async {
         println!("go proxy task created");
-        let sbres = tokio::task::spawn_blocking( move ||{
-            let mut merino = Merino::new(3001, "127.0.0.1".to_string(), auth_methods, Vec::new()).expect("proxy server fail");
-            merino.serve().expect("fail start proxy serve");
-            println!("ok proxy task created");
-        });
+        // let sbres = tokio::task::spawn_blocking( move ||{
+        //     let mut merino = Merino::new(3001, "127.0.0.1", auth_methods, Vec::new(),None).expect("failed create proxy");
+        //     merino.serve();
+        //     println!("ok proxy task created");
+        // });
+        let mut merino = Merino::new(3001,"127.0.0.1",auth_methods,Vec::new(),None).await.expect("failed create proxy");
+        merino.serve().await;
         println!("runing after proxy thread");
 
-        sbres
-    }).await?;
+    });
     // let proxy_task= tokio::task::spawn_blocking(move ||{
     //     println!("go proxy task created");
     //
@@ -114,7 +115,16 @@ async fn request_server_proxy() -> Result<(),Box<dyn std::error::Error>> {
     }
     println!("after client req pass proxy");
     server_task.abort();
-    println!("after server task abort");
+    println!("after server task abort listen port gone");
+    println!("wait 1s");
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    println!("wait 1s done");
+
+    proxy_task.abort();
+    println!("after proxy task abort listen port is gone");
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    println!("wait 1s done");
+
 
     //Calling abort() on a JoinHandle obtained from task::spawn_blocking will not terminate the blocking task
     //proxy_task.abort();
