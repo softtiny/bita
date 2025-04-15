@@ -57,6 +57,12 @@ async fn reqwest_request_proxy(url:&str) -> Result<String, Box<dyn std::error::E
 }
 
 #[tokio::test]
+async fn request_again() -> Result<(),Box<dyn std::error::Error>> {
+    Ok(())
+}
+
+
+
 async fn request_server_proxy() -> Result<(),Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([127,0,0,1],3000));
     let listener = TcpListener::bind(addr).await.expect("bind port erro");
