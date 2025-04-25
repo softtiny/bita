@@ -1,6 +1,6 @@
 use tokio::task::JoinSet;
 use std::time::Duration;
-use tokio::{join, try_join};
+use tokio::{join, try_join, runtime,};
 
 fn print_time(){
     let now = std::time::SystemTime::now();
@@ -96,4 +96,30 @@ async fn tokio_flow_join() -> Result<(), String> {
     let (result1, result2) = join!(first_future(), second_future());
     println!("Result 1: {}, Result 2: {}", result1.expect("not rusult1"), result2.expect("not result2"));
     Ok(())
+}
+
+#[test]
+fn go_other_thread() {
+
+    runtime::Builder::new_multi_thread()
+        .worker_threads(4)
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async move {
+            tokio::time::sleep(Duration::from_secs(55)).await;
+
+        })
+}
+
+#[test]
+fn current_thread() {
+    runtime::Builder::new_current_thread()
+    //A Tokio 1.x context was found, but timers are disabled. Call `enable_time` on the runtime builder to enable timers
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async move {
+            tokio::time::sleep(Duration::from_secs(55)).await;
+        })
 }
