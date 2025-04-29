@@ -123,3 +123,25 @@ fn current_thread() {
             tokio::time::sleep(Duration::from_secs(55)).await;
         })
 }
+
+#[test]
+fn loop_find_run(){
+    let mut count = 0;
+    loop {
+        count += 1;
+        if count > 2{
+            count = 0;
+        }
+    }
+}
+
+#[tokio::test]
+async fn loop_find_async(){
+    let mut count = 0;
+    loop {
+        count += 1;
+        if count > 2{
+            count = 0;
+        }
+    }
+}
