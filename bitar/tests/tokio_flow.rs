@@ -185,3 +185,36 @@ fn build_thread_w2(){
 
         })
 }
+
+
+struct SimpleFuture {
+    counter: u32,
+}
+
+impl SimpleFuture {
+    fn new() -> Self {
+        SimpleFuture { counter: 0 }
+    }
+}
+
+impl std::future::Future for SimpleFuture {
+    type Output = String;
+    fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        self.counter += 1;
+        if self.counter > 3 {
+            std::task::Poll::Ready(format!("Future resolved after {} polls", self.counter))
+        } else {
+            println!("Future is pending,poll count: {}", self.counter);
+            cx.waker().wake_by_ref();
+            std::task::Poll::Pending
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_simple_future(){
+    println!("run simplefuture");
+    let simple = SimpleFuture::new();
+    let res = simple.await;
+    println!("run simplefuture:{}",res);
+}
