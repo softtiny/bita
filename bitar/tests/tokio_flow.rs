@@ -1,6 +1,7 @@
 use tokio::task::JoinSet;
 use std::time::Duration;
 use tokio::{join, try_join, runtime,};
+use std::future::Future;
 
 fn print_time(){
     let now = std::time::SystemTime::now();
@@ -217,4 +218,70 @@ async fn test_simple_future(){
     let simple = SimpleFuture::new();
     let res = simple.await;
     println!("run simplefuture:{}",res);
+}
+
+
+
+// Define dummy functions for the vtable operations
+unsafe fn dummy_clone(data: *const ()) -> std::task::RawWaker {
+    std::task::RawWaker::new(data, &DUMMY_VTABLE)
+}
+
+unsafe fn dummy_wake(data: *const ()) {
+    // Do nothing
+}
+
+unsafe fn dummy_wake_by_ref(data: *const ()) {
+    // Do nothing
+}
+
+unsafe fn dummy_drop(data: *const ()) {
+    // Do nothing
+}
+
+// Create the dummy RawWakerVTable
+static DUMMY_VTABLE: std::task::RawWakerVTable = std::task::RawWakerVTable::new(
+    dummy_clone,
+    dummy_wake,
+    dummy_wake_by_ref,
+    dummy_drop,
+);
+
+
+fn minimal_waker() -> std::task::Waker {
+    // Create a dummy raw waker vtable
+    let raw_waker_vtable = &std::task::RawWakerVTable::new(
+        |_| std::task::RawWaker::new(std::ptr::null(), &DUMMY_VTABLE), // clone
+        |_| {},                                               // wake
+        |_| {},                                               // wake_by_ref
+        |_| {},                                               // drop
+    );
+
+    // Create a dummy raw waker
+    let raw_waker = std::task::RawWaker::new(std::ptr::null(), raw_waker_vtable);
+
+    // Create a Waker from the raw waker
+    unsafe { std::task::Waker::from_raw(raw_waker) }
+}
+
+#[test]
+fn run_future_simple() {
+    let mut future  = SimpleFuture::new();
+    let mut future = unsafe { std::pin::Pin::new_unchecked(&mut future) };
+    
+    let waker = minimal_waker();
+    let mut context = std::task::Context::from_waker(&waker);
+
+    loop {
+        match future.as_mut().poll(&mut context){
+            std::task::Poll::Ready(result) => {
+                println!("Result: {}", result);
+                break;
+            }
+            std::task::Poll::Pending => {
+                println!("Future is pending");
+                std::thread::sleep(std::time::Duration::from_millis(5000));
+            }
+        }
+    }
 }
