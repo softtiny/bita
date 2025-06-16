@@ -8,8 +8,20 @@ use hyper::rt::Executor;
 use hyper::server::conn::http2;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
-use merino::*;
-use tokio::net::TcpListener;
+use socks5_server::{
+    auth::NoAuth,
+    connection::state::NeedAuthenticate,
+    proto::{Address,Error, Reply},
+    Command,IncomingConnection,Server,
+};
+use tokio::{
+    net::{
+        TcpListener,
+        TcpStream,
+    },
+    io::{self, AsyncWriteExt},
+};
+
 
 #[derive(Clone)]
 pub struct TokioExecutor;
@@ -63,6 +75,97 @@ async fn request_again() -> Result<(),Box<dyn std::error::Error>> {
     Ok(())
 }
 
+async fn handle(conn: IncomingConnection<(), NeedAuthenticate>) -> Result<(), Error> {
+    let conn = match conn.authenticate().await {
+        Ok((conn, _)) => conn,
+        Err((err, mut conn)) => {
+            let _ = conn.shutdown().await;
+            return Err(err);
+        }
+    };
+
+    match conn.wait().await {
+        Ok(Command::Associate(associate, _)) => {
+            let replied = associate
+                .reply(Reply::CommandNotSupported, Address::unspecified())
+                .await;
+
+            let mut conn = match replied {
+                Ok(conn) => conn,
+                Err((err, mut conn)) => {
+                    let _ = conn.shutdown().await;
+                    return Err(Error::Io(err));
+                }
+            };
+
+            let _ = conn.close().await;
+        }
+        Ok(Command::Bind(bind, _)) => {
+            let replied = bind
+                .reply(Reply::CommandNotSupported, Address::unspecified())
+                .await;
+
+            let mut conn = match replied {
+                Ok(conn) => conn,
+                Err((err, mut conn)) => {
+                    let _ = conn.shutdown().await;
+                    return Err(Error::Io(err));
+                }
+            };
+
+            let _ = conn.close().await;
+        }
+        Ok(Command::Connect(connect, addr)) => {
+            let target = match addr {
+                Address::DomainAddress(domain, port) => {
+                    let domain = String::from_utf8_lossy(&domain);
+                    TcpStream::connect((domain.as_ref(), port)).await
+                }
+                Address::SocketAddress(addr) => TcpStream::connect(addr).await,
+            };
+
+            if let Ok(mut target) = target {
+                let replied = connect
+                    .reply(Reply::Succeeded, Address::unspecified())
+                    .await;
+
+                let mut conn = match replied {
+                    Ok(conn) => conn,
+                    Err((err, mut conn)) => {
+                        let _ = conn.shutdown().await;
+                        return Err(Error::Io(err));
+                    }
+                };
+
+                let res = io::copy_bidirectional(&mut target, &mut conn).await;
+                let _ = conn.shutdown().await;
+                let _ = target.shutdown().await;
+
+                res?;
+            } else {
+                let replied = connect
+                    .reply(Reply::HostUnreachable, Address::unspecified())
+                    .await;
+
+                let mut conn = match replied {
+                    Ok(conn) => conn,
+                    Err((err, mut conn)) => {
+                        let _ = conn.shutdown().await;
+                        return Err(Error::Io(err));
+                    }
+                };
+
+                let _ = conn.shutdown().await;
+            }
+        }
+        Err((err, mut conn)) => {
+            let _ = conn.shutdown().await;
+            return Err(err);
+        }
+    }
+
+    Ok(())
+}
 
 #[tokio::test]
 async fn request_server_proxy() -> Result<(),Box<dyn std::error::Error>> {
@@ -93,18 +196,26 @@ async fn request_server_proxy() -> Result<(),Box<dyn std::error::Error>> {
     }
     println!("after client req s");
 
-    let mut auth_methods: Vec<u8> = Vec::new();
-    auth_methods.push(merino::AuthMethods::NoAuth as u8);
+
     println!("run proxy task start");
     let mut proxy_task = tokio::task::spawn(async {
+        let listener = TcpListener::bind("127.0.0.1:3001").await.expect("failed to create tcp listener");
+        let auth =std::sync::Arc::new( NoAuth);
+        let server = Server::new(listener,auth);
+        while let Ok((conn, _))  = server.accept().await {
+            match handle(conn).await {
+                Ok(()) => {}
+                Err(err) => eprintln!("{err}"),
+            }
+        }
+
         println!("go proxy task created");
         // let sbres = tokio::task::spawn_blocking( move ||{
         //     let mut merino = Merino::new(3001, "127.0.0.1", auth_methods, Vec::new(),None).expect("failed create proxy");
         //     merino.serve();
         //     println!("ok proxy task created");
         // });
-        let mut merino = Merino::new(3001,"127.0.0.1",auth_methods,Vec::new(),None).await.expect("failed create proxy");
-        merino.serve().await;
+
         println!("runing after proxy thread");
 
     });
